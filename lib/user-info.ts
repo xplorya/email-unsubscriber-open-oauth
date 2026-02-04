@@ -1,0 +1,83 @@
+import type { Env } from './types';
+
+/**
+ * Fetches user info from the backend user info service using the ID token.
+ * Returns the raw JSON response to keep the OAuth service schema-agnostic.
+ *
+ * @param idToken - The ID token from the OAuth provider
+ * @param env - Worker environment bindings
+ * @returns Raw user info JSON from the backend
+ * @throws Error if the request fails
+ */
+export async function fetchUserInfo(idToken: string, env: Env): Promise<unknown> {
+  const userInfoUrl = `${env.USER_INFO_SERVICE_URL}/user/info`;
+
+  const response = await fetch(userInfoUrl, {
+    method: 'GET',
+    headers: {
+      'x-auth-token': idToken,
+    },
+  });
+
+  const body = await response.text();
+
+  // For non-2xx status, propagate the error with status and message
+  if (!response.ok) {
+    throw new Error(`User info request failed with status ${response.status}: ${body}`);
+  }
+
+  try {
+    return JSON.parse(body);
+  } catch {
+    throw new Error(`Failed to parse user info response: ${body}`);
+  }
+}
+
+/**
+ * Extracts the email claim from an ID token JWT.
+ * This performs base64 decoding of the payload without signature validation
+ * since the token comes directly from the OAuth provider's token endpoint.
+ * Supports both Google and Microsoft token formats.
+ *
+ * @param idToken - The ID token JWT string
+ * @returns The email address from the token
+ * @throws Error if email cannot be extracted
+ */
+export function extractEmailFromIdToken(idToken: string): string {
+  const parts = idToken.split('.');
+  if (parts.length !== 3) {
+    throw new Error('Invalid JWT format');
+  }
+
+  // Decode the payload (middle part)
+  // Handle base64url encoding (replace - with + and _ with /)
+  const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+  // Add padding if necessary (base64 requires length to be multiple of 4)
+  const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+  const payload = atob(padded);
+
+  // Parse JSON to extract email
+  const claims = JSON.parse(payload);
+
+  // Try "email" claim first (works for both Google and Microsoft)
+  if (claims.email && typeof claims.email === 'string') {
+    return claims.email;
+  }
+
+  // For Microsoft tokens, try alternative claims
+  // "preferred_username" often contains email for personal accounts
+  if (claims.preferred_username && typeof claims.preferred_username === 'string') {
+    if (claims.preferred_username.includes('@')) {
+      return claims.preferred_username;
+    }
+  }
+
+  // "upn" (User Principal Name) is common in work/school accounts
+  if (claims.upn && typeof claims.upn === 'string') {
+    if (claims.upn.includes('@')) {
+      return claims.upn;
+    }
+  }
+
+  throw new Error('Email claim not found in token');
+}

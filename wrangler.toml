@@ -1,0 +1,60 @@
+name = "email-unsubscriber-oauth"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# =============================================================================
+# PRODUCTION (deployed from main branch)
+# Route: auth.email-unsubscriber.com/api/*
+# =============================================================================
+
+# Observability - enable logging for debugging
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+
+[vars]
+ENVIRONMENT = "production"
+USER_INFO_SERVICE_URL = "https://app.email-unsubscriber.com/api"
+ALLOWED_REDIRECT_URIS = "https://app.email-unsubscriber.com/"
+
+# Secrets (set via Cloudflare dashboard or `wrangler secret put`):
+# - GOOGLE_OAUTH_CLIENT_ID
+# - GOOGLE_OAUTH_CLIENT_SECRET
+# - MICROSOFT_OAUTH_CLIENT_ID
+# - MICROSOFT_OAUTH_CLIENT_SECRET
+
+# =============================================================================
+# STAGING (deployed from staging branch)
+# Route: auth.email-unsubscriber.com/api-staging/*
+# =============================================================================
+[env.staging]
+name = "email-unsubscriber-oauth-staging"
+
+[env.staging.observability]
+enabled = true
+
+[env.staging.observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+
+[env.staging.vars]
+ENVIRONMENT = "staging"
+USER_INFO_SERVICE_URL = "https://app.email-unsubscriber.com/api-staging"
+ALLOWED_REDIRECT_URIS = "https://app.email-unsubscriber.com/,http://localhost:5173/,http://localhost:3000/,http://127.0.0.1:5173/"
+
+# =============================================================================
+# LOCAL DEVELOPMENT
+# Run with: npm run dev
+# =============================================================================
+[env.dev]
+name = "email-unsubscriber-oauth-dev"
+
+[env.dev.vars]
+ENVIRONMENT = "development"
+USER_INFO_SERVICE_URL = "http://127.0.0.1:3020"
+ALLOWED_REDIRECT_URIS = "http://localhost:5173/,http://localhost:3000/,http://127.0.0.1:5173/"

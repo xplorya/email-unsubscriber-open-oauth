@@ -1,0 +1,25 @@
+{
+  "name": "email-unsubscriber-open-oauth",
+  "version": "1.0.0",
+  "description": "Open-source OAuth token exchange proxy for Email Unsubscriber",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev --env dev --var GOOGLE_OAUTH_CLIENT_ID:$GOOGLE_OAUTH_CLIENT_ID --var GOOGLE_OAUTH_CLIENT_SECRET:$GOOGLE_OAUTH_CLIENT_SECRET --var MICROSOFT_OAUTH_CLIENT_ID:$MICROSOFT_OAUTH_CLIENT_ID --var MICROSOFT_OAUTH_CLIENT_SECRET:$MICROSOFT_OAUTH_CLIENT_SECRET",
+    "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging"
+  },
+  "keywords": [
+    "oauth",
+    "cloudflare-workers",
+    "google-oauth",
+    "microsoft-oauth",
+    "email-unsubscriber"
+  ],
+  "author": "xplorya",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240117.0",
+    "typescript": "^5.3.3",
+    "wrangler": "^4.0.0"
+  }
+}
