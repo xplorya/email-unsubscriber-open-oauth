@@ -1,4 +1,4 @@
-name = "email-unsubscriber-oauth-staging"
+name = "email-unsubscriber-oauth"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 
