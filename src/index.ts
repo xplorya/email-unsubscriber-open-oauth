@@ -18,6 +18,7 @@ import { exchangeCodeGoogle } from '../lib/oauth-google';
 import { exchangeCodeMicrosoft } from '../lib/oauth-microsoft';
 import { fetchUserInfo } from '../lib/user-info';
 
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
