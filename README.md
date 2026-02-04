@@ -1,4 +1,4 @@
-# Email Unsubscriber Open OAuth
+# Email Unsubscriber Open OAuth 
 
 A transparent, open-source OAuth token exchange proxy for [Email Unsubscriber](https://email-unsubscriber.com).
 
