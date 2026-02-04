@@ -23,18 +23,22 @@ export default {
     const url = new URL(request.url);
     const origin = request.headers.get('Origin');
 
+    // Strip route prefix (/api or /api-staging) from pathname
+    // CF routes include the prefix in the path, but we want clean route matching
+    const pathname = stripRoutePrefix(url.pathname);
+
     // CORS preflight
     if (request.method === 'OPTIONS') {
       return handleCors(origin, env.ALLOWED_REDIRECT_URIS);
     }
 
     // Health check endpoint
-    if (url.pathname === '/health') {
+    if (pathname === '/health') {
       return jsonResponse({ status: 'ok', environment: env.ENVIRONMENT }, 200, origin, env.ALLOWED_REDIRECT_URIS);
     }
 
     // Token exchange endpoint
-    if (url.pathname === '/oauth/token' && request.method === 'POST') {
+    if (pathname === '/oauth/token' && request.method === 'POST') {
       return handleTokenExchange(request, env, origin);
     }
 
@@ -42,6 +46,20 @@ export default {
     return jsonResponse({ error: 'Not found' }, 404, origin, env.ALLOWED_REDIRECT_URIS);
   },
 };
+
+/**
+ * Strips the route prefix (/api or /api-staging) from the pathname.
+ * This allows clean route matching regardless of which CF route is used.
+ */
+function stripRoutePrefix(pathname: string): string {
+  if (pathname.startsWith('/api-staging')) {
+    return pathname.slice('/api-staging'.length) || '/';
+  }
+  if (pathname.startsWith('/api')) {
+    return pathname.slice('/api'.length) || '/';
+  }
+  return pathname;
+}
 
 /**
  * Handles the OAuth token exchange request.
