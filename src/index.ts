@@ -30,7 +30,7 @@ export default {
 
     // Health check endpoint
     if (url.pathname === '/health') {
-      return jsonResponse({ status: 'ok', environment: env.ENVIRONMENT }, 200, origin);
+      return jsonResponse({ status: 'ok', environment: env.ENVIRONMENT }, 200, origin, env.ALLOWED_REDIRECT_URIS);
     }
 
     // Token exchange endpoint
@@ -39,7 +39,7 @@ export default {
     }
 
     // 404 for unknown routes
-    return jsonResponse({ error: 'Not found' }, 404, origin);
+    return jsonResponse({ error: 'Not found' }, 404, origin, env.ALLOWED_REDIRECT_URIS);
   },
 };
 
@@ -47,30 +47,31 @@ export default {
  * Handles the OAuth token exchange request.
  */
 async function handleTokenExchange(request: Request, env: Env, origin: string | null): Promise<Response> {
+  const allowedUris = env.ALLOWED_REDIRECT_URIS;
   let req: TokenExchangeRequest;
 
   // Parse request body
   try {
     req = await request.json();
   } catch {
-    return errorResponse('Invalid request body', 400);
+    return errorResponse('Invalid request body', 400, origin, allowedUris);
   }
 
   // Validate required fields
   if (!req.code) {
-    return errorResponse('code is required', 400);
+    return errorResponse('code is required', 400, origin, allowedUris);
   }
   if (!req.redirect_uri) {
-    return errorResponse('redirect_uri is required', 400);
+    return errorResponse('redirect_uri is required', 400, origin, allowedUris);
   }
   if (!req.provider) {
-    return errorResponse('provider is required', 400);
+    return errorResponse('provider is required', 400, origin, allowedUris);
   }
 
   // Validate redirect_uri against allowlist to prevent token theft
-  if (!validateRedirectUri(req.redirect_uri, env.ALLOWED_REDIRECT_URIS)) {
+  if (!validateRedirectUri(req.redirect_uri, allowedUris)) {
     console.error(`[${env.ENVIRONMENT}] Invalid redirect_uri attempted: ${req.redirect_uri}`);
-    return errorResponse('invalid redirect_uri', 400);
+    return errorResponse('invalid redirect_uri', 400, origin, allowedUris);
   }
 
   try {
@@ -87,13 +88,13 @@ async function handleTokenExchange(request: Request, env: Env, origin: string | 
         tokenResp = await exchangeCodeMicrosoft(req, env);
         break;
       default:
-        return errorResponse(`Unsupported OAuth provider: ${provider}`, 400);
+        return errorResponse(`Unsupported OAuth provider: ${provider}`, 400, origin, allowedUris);
     }
 
     // Validate id_token is present (required for user info fetch)
     if (!tokenResp.id_token) {
       console.error(`[${env.ENVIRONMENT}] id_token missing from provider response`);
-      return errorResponse('Token exchange failed', 400);
+      return errorResponse('Token exchange failed', 400, origin, allowedUris);
     }
 
     // Fetch user info from backend and attach to response
@@ -103,13 +104,13 @@ async function handleTokenExchange(request: Request, env: Env, origin: string | 
       tokenResp.user_info = userInfo;
     } catch (err) {
       console.error(`[${env.ENVIRONMENT}] Failed to fetch user info:`, err);
-      return errorResponse('Failed to retrieve user information', 500);
+      return errorResponse('Failed to retrieve user information', 500, origin, allowedUris);
     }
 
-    return jsonResponse(tokenResp, 200, origin, env.ALLOWED_REDIRECT_URIS);
+    return jsonResponse(tokenResp, 200, origin, allowedUris);
   } catch (err) {
     console.error(`[${env.ENVIRONMENT}] OAuth token exchange error:`, err);
-    return errorResponse('Token exchange failed', 400);
+    return errorResponse('Token exchange failed', 400, origin, allowedUris);
   }
 }
 
@@ -138,15 +139,16 @@ function jsonResponse(
 }
 
 /**
- * Creates an error response without CORS headers for security.
+ * Creates an error response with CORS headers for allowed origins.
+ * This allows the browser to read the actual error message.
  */
-function errorResponse(message: string, status: number): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+function errorResponse(
+  message: string,
+  status: number,
+  origin: string | null,
+  allowedUris: string
+): Response {
+  return jsonResponse({ error: message }, status, origin, allowedUris);
 }
 
 /**
