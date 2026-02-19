@@ -119,7 +119,8 @@ async function handleTokenExchange(request: Request, env: Env, origin: string | 
     // Fetch user info from backend and attach to response
     // CRITICAL: If this fails, the entire OAuth flow fails (no graceful degradation)
     try {
-      const userInfo = await fetchUserInfo(tokenResp.id_token, env);
+      const referralCode = request.headers.get('x-referral-code') || undefined;
+      const userInfo = await fetchUserInfo(tokenResp.id_token, env, referralCode);
       tokenResp.user_info = userInfo;
     } catch (err) {
       console.error(`[${env.ENVIRONMENT}] Failed to fetch user info:`, err);
@@ -151,7 +152,7 @@ function jsonResponse(
   if (origin && allowedUris && isAllowedOrigin(origin, allowedUris)) {
     headers['Access-Control-Allow-Origin'] = origin;
     headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS';
-    headers['Access-Control-Allow-Headers'] = 'Content-Type';
+    headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Referral-Code';
   }
 
   return new Response(JSON.stringify(data), { status, headers });
@@ -180,7 +181,7 @@ function handleCors(origin: string | null, allowedUris: string): Response {
   if (origin && isAllowedOrigin(origin, allowedUris)) {
     headers['Access-Control-Allow-Origin'] = origin;
     headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS';
-    headers['Access-Control-Allow-Headers'] = 'Content-Type';
+    headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Referral-Code';
     headers['Access-Control-Max-Age'] = '86400';
   }
 

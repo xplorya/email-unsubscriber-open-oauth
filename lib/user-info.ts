@@ -6,17 +6,24 @@ import type { Env } from './types';
  *
  * @param idToken - The ID token from the OAuth provider
  * @param env - Worker environment bindings
+ * @param referralCode - Optional referral code to forward to the backend
  * @returns Raw user info JSON from the backend
  * @throws Error if the request fails
  */
-export async function fetchUserInfo(idToken: string, env: Env): Promise<unknown> {
+export async function fetchUserInfo(idToken: string, env: Env, referralCode?: string): Promise<unknown> {
   const userInfoUrl = `${env.USER_INFO_SERVICE_URL}/user/info`;
+
+  const headers: Record<string, string> = {
+    'x-auth-token': idToken,
+  };
+
+  if (referralCode) {
+    headers['x-referral-code'] = referralCode;
+  }
 
   const response = await fetch(userInfoUrl, {
     method: 'GET',
-    headers: {
-      'x-auth-token': idToken,
-    },
+    headers,
   });
 
   const body = await response.text();
