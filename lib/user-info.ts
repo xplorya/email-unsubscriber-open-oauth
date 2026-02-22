@@ -1,6 +1,23 @@
 import type { Env } from './types';
 
 /**
+ * Structured error for user info fetch failures.
+ * Carries the HTTP status and parsed response body so callers can
+ * forward backend errors (e.g. 403 access denied) transparently.
+ */
+export class UserInfoError extends Error {
+  readonly status: number;
+  readonly body: unknown;
+
+  constructor(status: number, body: unknown, message: string) {
+    super(message);
+    this.name = 'UserInfoError';
+    this.status = status;
+    this.body = body;
+  }
+}
+
+/**
  * Fetches user info from the backend user info service using the ID token.
  * Returns the raw JSON response to keep the OAuth service schema-agnostic.
  *
@@ -8,7 +25,8 @@ import type { Env } from './types';
  * @param env - Worker environment bindings
  * @param referralCode - Optional referral code to forward to the backend
  * @returns Raw user info JSON from the backend
- * @throws Error if the request fails
+ * @throws {UserInfoError} if the backend returns a non-2xx status (preserves status + body)
+ * @throws {Error} if the response cannot be parsed
  */
 export async function fetchUserInfo(idToken: string, env: Env, referralCode?: string): Promise<unknown> {
   const userInfoUrl = `${env.USER_INFO_SERVICE_URL}/user/info`;
@@ -28,9 +46,13 @@ export async function fetchUserInfo(idToken: string, env: Env, referralCode?: st
 
   const body = await response.text();
 
-  // For non-2xx status, propagate the error with status and message
+  // For non-2xx status, throw a structured error preserving the HTTP status and body
   if (!response.ok) {
-    throw new Error(`User info request failed with status ${response.status}: ${body}`);
+    throw new UserInfoError(
+      response.status,
+      response.body,
+      `User info request failed with status ${response.status}: ${body}`
+    );
   }
 
   try {
